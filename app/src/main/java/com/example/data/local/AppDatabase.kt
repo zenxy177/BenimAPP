@@ -4,8 +4,9 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.data.local.dao.AppDao
+import com.example.data.local.dao.*
 import com.example.data.local.entity.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,18 +17,25 @@ import java.util.Locale
 
 @Database(
     entities = [
-        QuoteEntity::class,
         HomeworkEntity::class,
         ExamEntity::class,
-        ScheduleLessonEntity::class,
         DailyGoalEntity::class,
+        QuoteEntity::class,
+        ScheduleLessonEntity::class,
         ReminderEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
+@TypeConverters(RoomConverters::class)
 abstract class AppDatabase : RoomDatabase() {
 
+    abstract fun homeworkDao(): HomeworkDao
+    abstract fun examDao(): ExamDao
+    abstract fun goalDao(): GoalDao
+    abstract fun quoteDao(): QuoteDao
+    abstract fun scheduleDao(): ScheduleDao
+    abstract fun reminderDao(): ReminderDao
     abstract fun appDao(): AppDao
 
     companion object {
@@ -41,7 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "rehberim_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .addCallback(DatabaseCallback())
                     .build()
                 INSTANCE = instance
@@ -60,19 +68,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
 
             suspend fun populateInitialData(database: AppDatabase) {
-                val dao = database.appDao()
-                if (dao.getQuoteCount() == 0) {
-                    dao.insertQuotes(InitialData.initialQuotes)
+                val quoteDao = database.quoteDao()
+                val homeworkDao = database.homeworkDao()
+                val examDao = database.examDao()
+                val goalDao = database.goalDao()
+                val scheduleDao = database.scheduleDao()
+
+                if (quoteDao.getQuoteCount() == 0) {
+                    quoteDao.insertQuotes(InitialData.initialQuotes)
                 }
-                if (dao.getScheduleCount() == 0) {
-                    dao.insertLessons(InitialData.getSampleSchedule())
+                if (scheduleDao.getScheduleCount() == 0) {
+                    scheduleDao.insertLessons(InitialData.getSampleSchedule())
                 }
                 val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                if (dao.getGoalCountForDate(todayStr) == 0) {
-                    dao.insertGoals(InitialData.getSampleGoals(todayStr))
+                if (goalDao.getGoalCountForDate(todayStr) == 0) {
+                    goalDao.insertGoals(InitialData.getSampleGoals(todayStr))
                 }
-                InitialData.getSampleHomeworks().forEach { dao.insertHomework(it) }
-                InitialData.getSampleExams().forEach { dao.insertExam(it) }
+                if (homeworkDao.getHomeworkCount() == 0) {
+                    homeworkDao.insertHomeworks(InitialData.getSampleHomeworks())
+                }
+                if (examDao.getExamCount() == 0) {
+                    examDao.insertExams(InitialData.getSampleExams())
+                }
             }
         }
     }

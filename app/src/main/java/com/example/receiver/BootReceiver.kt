@@ -17,14 +17,12 @@ class BootReceiver : BroadcastReceiver() {
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // Reschedule periodic quotes (default 6 hours)
                     NotificationHelper.schedulePeriodicQuoteNotification(context, 6)
 
-                    // Reschedule any future reminders
                     val db = AppDatabase.getDatabase(context)
-                    val reminders = db.appDao().getAllReminders().firstOrNull() ?: emptyList()
+                    val reminders = db.reminderDao().getActiveReminders().firstOrNull() ?: emptyList()
                     val now = System.currentTimeMillis()
-                    reminders.filter { it.isEnabled && it.triggerTimeMillis > now }.forEach { rem ->
+                    reminders.filter { it.triggerTimeMillis > now }.forEach { rem ->
                         NotificationHelper.scheduleExactReminder(context, rem.id, rem.triggerTimeMillis)
                     }
                 } catch (e: Exception) {

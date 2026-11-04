@@ -18,7 +18,7 @@ class QuoteNotificationReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getDatabase(context)
-                val quote = db.appDao().getRandomQuote() ?: InitialData.initialQuotes.random()
+                val quote = db.quoteDao().getRandomQuote() ?: InitialData.initialQuotes.random()
 
                 val categoryTitle = when (quote.category) {
                     QuoteCategory.AYET -> "Günün Âyeti Kerîmesi"
@@ -33,7 +33,6 @@ class QuoteNotificationReceiver : BroadcastReceiver() {
                     categoryTitle = categoryTitle
                 )
             } catch (e: Exception) {
-                // Fallback
                 val fallback = InitialData.initialQuotes.first()
                 NotificationHelper.showQuoteNotification(
                     context = context,

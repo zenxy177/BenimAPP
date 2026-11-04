@@ -20,7 +20,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getDatabase(context)
-                val allReminders = db.appDao().getAllReminders().firstOrNull() ?: emptyList()
+                val allReminders = db.reminderDao().getAllReminders().firstOrNull() ?: emptyList()
                 val reminder = allReminders.find { it.id == reminderId }
 
                 if (reminder != null && reminder.isEnabled) {

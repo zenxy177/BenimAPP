@@ -15,7 +15,12 @@ import java.util.Locale
 class AppRepository(private val context: Context) {
 
     private val db = AppDatabase.getDatabase(context)
-    private val dao = db.appDao()
+    private val homeworkDao = db.homeworkDao()
+    private val examDao = db.examDao()
+    private val goalDao = db.goalDao()
+    private val quoteDao = db.quoteDao()
+    private val scheduleDao = db.scheduleDao()
+    private val reminderDao = db.reminderDao()
 
     fun getTodayDateString(): String {
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -23,26 +28,29 @@ class AppRepository(private val context: Context) {
 
     // Initialize database data if empty
     suspend fun checkAndSeedInitialData() = withContext(Dispatchers.IO) {
-        if (dao.getQuoteCount() == 0) {
-            dao.insertQuotes(InitialData.initialQuotes)
+        if (quoteDao.getQuoteCount() == 0) {
+            quoteDao.insertQuotes(InitialData.initialQuotes)
         }
-        if (dao.getScheduleCount() == 0) {
-            dao.insertLessons(InitialData.getSampleSchedule())
+        if (scheduleDao.getScheduleCount() == 0) {
+            scheduleDao.insertLessons(InitialData.getSampleSchedule())
         }
         val todayStr = getTodayDateString()
-        if (dao.getGoalCountForDate(todayStr) == 0) {
-            dao.insertGoals(InitialData.getSampleGoals(todayStr))
+        if (goalDao.getGoalCountForDate(todayStr) == 0) {
+            goalDao.insertGoals(InitialData.getSampleGoals(todayStr))
         }
-        // Seed homeworks if empty
-        val existingHw = dao.getAllHomeworks()
-        // Default seed is done in callback or here
+        if (homeworkDao.getHomeworkCount() == 0) {
+            homeworkDao.insertHomeworks(InitialData.getSampleHomeworks())
+        }
+        if (examDao.getExamCount() == 0) {
+            examDao.insertExams(InitialData.getSampleExams())
+        }
     }
 
-    // --- QUOTES ---
-    val allQuotes: Flow<List<QuoteEntity>> = dao.getAllQuotes()
+    // --- QUOTES (QuoteDao) ---
+    val allQuotes: Flow<List<QuoteEntity>> = quoteDao.getAllQuotes()
 
     suspend fun toggleFavoriteQuote(quote: QuoteEntity) = withContext(Dispatchers.IO) {
-        dao.updateQuote(quote.copy(isFavorite = !quote.isFavorite))
+        quoteDao.updateQuote(quote.copy(isFavorite = !quote.isFavorite))
     }
 
     suspend fun addQuote(text: String, source: String, category: QuoteCategory) = withContext(Dispatchers.IO) {
@@ -52,19 +60,25 @@ class AppRepository(private val context: Context) {
             category = category,
             isUserAdded = true
         )
-        dao.insertQuote(newQuote)
+        quoteDao.insertQuote(newQuote)
     }
 
     suspend fun deleteQuote(quote: QuoteEntity) = withContext(Dispatchers.IO) {
-        dao.deleteQuote(quote)
+        quoteDao.deleteQuote(quote)
     }
 
     suspend fun getRandomQuote(): QuoteEntity? = withContext(Dispatchers.IO) {
-        dao.getRandomQuote()
+        quoteDao.getRandomQuote()
     }
 
-    // --- HOMEWORKS ---
-    val allHomeworks: Flow<List<HomeworkEntity>> = dao.getAllHomeworks()
+    // --- HOMEWORKS (HomeworkDao) ---
+    val allHomeworks: Flow<List<HomeworkEntity>> = homeworkDao.getAllHomeworks()
+
+    fun getHomeworksByType(type: HomeworkType): Flow<List<HomeworkEntity>> =
+        homeworkDao.getHomeworksByType(type)
+
+    fun getPendingHomeworks(): Flow<List<HomeworkEntity>> =
+        homeworkDao.getPendingHomeworks()
 
     suspend fun addHomework(
         title: String,
@@ -82,19 +96,22 @@ class AppRepository(private val context: Context) {
             dueDateMillis = dueDateMillis,
             priority = priority
         )
-        dao.insertHomework(hw)
+        homeworkDao.insertHomework(hw)
     }
 
     suspend fun toggleHomework(homework: HomeworkEntity) = withContext(Dispatchers.IO) {
-        dao.updateHomework(homework.copy(isCompleted = !homework.isCompleted))
+        homeworkDao.updateHomework(homework.copy(isCompleted = !homework.isCompleted))
     }
 
     suspend fun deleteHomework(homework: HomeworkEntity) = withContext(Dispatchers.IO) {
-        dao.deleteHomework(homework)
+        homeworkDao.deleteHomework(homework)
     }
 
-    // --- EXAMS ---
-    val allExams: Flow<List<ExamEntity>> = dao.getAllExams()
+    // --- EXAMS (ExamDao) ---
+    val allExams: Flow<List<ExamEntity>> = examDao.getAllExams()
+
+    fun getUpcomingExams(currentTimeMillis: Long = System.currentTimeMillis()): Flow<List<ExamEntity>> =
+        examDao.getUpcomingExams(currentTimeMillis)
 
     suspend fun addExam(
         courseName: String,
@@ -110,21 +127,22 @@ class AppRepository(private val context: Context) {
             topics = topics.trim(),
             targetGrade = targetGrade
         )
-        dao.insertExam(exam)
+        examDao.insertExam(exam)
     }
 
     suspend fun updateExamGrade(exam: ExamEntity, actualGrade: Int?) = withContext(Dispatchers.IO) {
-        dao.updateExam(exam.copy(actualGrade = actualGrade))
+        examDao.updateExam(exam.copy(actualGrade = actualGrade))
     }
 
     suspend fun deleteExam(exam: ExamEntity) = withContext(Dispatchers.IO) {
-        dao.deleteExam(exam)
+        examDao.deleteExam(exam)
     }
 
-    // --- SCHEDULE ---
-    val allLessons: Flow<List<ScheduleLessonEntity>> = dao.getAllLessons()
+    // --- SCHEDULE (ScheduleDao) ---
+    val allLessons: Flow<List<ScheduleLessonEntity>> = scheduleDao.getAllLessons()
 
-    fun getLessonsForDay(dayOfWeek: Int): Flow<List<ScheduleLessonEntity>> = dao.getLessonsForDay(dayOfWeek)
+    fun getLessonsForDay(dayOfWeek: Int): Flow<List<ScheduleLessonEntity>> =
+        scheduleDao.getLessonsForDay(dayOfWeek)
 
     suspend fun addLesson(
         dayOfWeek: Int,
@@ -144,15 +162,19 @@ class AppRepository(private val context: Context) {
             endTime = endTime.trim(),
             colorHex = colorHex
         )
-        dao.insertLesson(lesson)
+        scheduleDao.insertLesson(lesson)
     }
 
     suspend fun deleteLesson(lesson: ScheduleLessonEntity) = withContext(Dispatchers.IO) {
-        dao.deleteLesson(lesson)
+        scheduleDao.deleteLesson(lesson)
     }
 
-    // --- DAILY GOALS ---
-    fun getTodayGoals(): Flow<List<DailyGoalEntity>> = dao.getGoalsForDate(getTodayDateString())
+    // --- DAILY GOALS (GoalDao) ---
+    fun getTodayGoals(): Flow<List<DailyGoalEntity>> =
+        goalDao.getGoalsForDate(getTodayDateString())
+
+    fun getGoalsByDateAndCategory(category: GoalCategory): Flow<List<DailyGoalEntity>> =
+        goalDao.getGoalsByDateAndCategory(getTodayDateString(), category)
 
     suspend fun addGoal(
         title: String,
@@ -169,27 +191,27 @@ class AppRepository(private val context: Context) {
             isCompleted = false,
             dateString = getTodayDateString()
         )
-        dao.insertGoal(goal)
+        goalDao.insertGoal(goal)
     }
 
     suspend fun incrementGoal(goal: DailyGoalEntity, delta: Int = 1) = withContext(Dispatchers.IO) {
         val newCurrent = (goal.currentCount + delta).coerceAtLeast(0)
         val isDone = newCurrent >= goal.targetCount
-        dao.updateGoal(goal.copy(currentCount = newCurrent, isCompleted = isDone))
+        goalDao.updateGoal(goal.copy(currentCount = newCurrent, isCompleted = isDone))
     }
 
     suspend fun toggleGoalCompleted(goal: DailyGoalEntity) = withContext(Dispatchers.IO) {
         val isDone = !goal.isCompleted
         val newCurrent = if (isDone) goal.targetCount else 0
-        dao.updateGoal(goal.copy(isCompleted = isDone, currentCount = newCurrent))
+        goalDao.updateGoal(goal.copy(isCompleted = isDone, currentCount = newCurrent))
     }
 
     suspend fun deleteGoal(goal: DailyGoalEntity) = withContext(Dispatchers.IO) {
-        dao.deleteGoal(goal)
+        goalDao.deleteGoal(goal)
     }
 
-    // --- REMINDERS ---
-    val allReminders: Flow<List<ReminderEntity>> = dao.getAllReminders()
+    // --- REMINDERS (ReminderDao) ---
+    val allReminders: Flow<List<ReminderEntity>> = reminderDao.getAllReminders()
 
     suspend fun addReminder(title: String, note: String, triggerTimeMillis: Long) = withContext(Dispatchers.IO) {
         val rem = ReminderEntity(
@@ -198,13 +220,13 @@ class AppRepository(private val context: Context) {
             triggerTimeMillis = triggerTimeMillis,
             isEnabled = true
         )
-        val id = dao.insertReminder(rem)
+        val id = reminderDao.insertReminder(rem)
         NotificationHelper.scheduleExactReminder(context, id, triggerTimeMillis)
     }
 
     suspend fun toggleReminder(reminder: ReminderEntity) = withContext(Dispatchers.IO) {
         val newEnabled = !reminder.isEnabled
-        dao.updateReminder(reminder.copy(isEnabled = newEnabled))
+        reminderDao.updateReminder(reminder.copy(isEnabled = newEnabled))
         if (newEnabled) {
             NotificationHelper.scheduleExactReminder(context, reminder.id, reminder.triggerTimeMillis)
         } else {
@@ -214,12 +236,12 @@ class AppRepository(private val context: Context) {
 
     suspend fun deleteReminder(reminder: ReminderEntity) = withContext(Dispatchers.IO) {
         NotificationHelper.cancelReminder(context, reminder.id)
-        dao.deleteReminder(reminder)
+        reminderDao.deleteReminder(reminder)
     }
 
     // --- NOTIFICATION UTILITIES ---
     suspend fun triggerTestQuoteNotification() = withContext(Dispatchers.IO) {
-        val quote = dao.getRandomQuote() ?: InitialData.initialQuotes.random()
+        val quote = quoteDao.getRandomQuote() ?: InitialData.initialQuotes.random()
         val categoryTitle = when (quote.category) {
             QuoteCategory.AYET -> "Âyet-i Kerîme"
             QuoteCategory.HADIS -> "Hadîs-i Şerîf"
