@@ -1,0 +1,6 @@
+{
+  "name": "Rehberim",
+  "description": "Öğrenci ödevleri, sınav takvimi, ders programı, günlük hedefler, hatırlatıcılar ve ilham veren ayet, hadis ve hikmetli söz bildirimleri.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
