@@ -8,10 +8,10 @@ val EmeraldOnPrimaryLight = Color(0xFFFFFFFF)
 val EmeraldPrimaryContainerLight = Color(0xFFCCE8E1)
 val EmeraldOnPrimaryContainerLight = Color(0xFF00201B)
 
-val EmeraldPrimaryDark = Color(0xFF53DBC6)
-val EmeraldOnPrimaryDark = Color(0xFF003730)
-val EmeraldPrimaryContainerDark = Color(0xFF005046)
-val EmeraldOnPrimaryContainerDark = Color(0xFFCCE8E1)
+val EmeraldPrimaryDark = Color(0xFF4EE2EC)
+val EmeraldOnPrimaryDark = Color(0xFF003731)
+val EmeraldPrimaryContainerDark = Color(0xFF093E36)
+val EmeraldOnPrimaryContainerDark = Color(0xFFD0F4EE)
 
 // Secondary Gold / Amber Palette (Illumination & Highlights)
 val GoldSecondaryLight = Color(0xFF915D00)
@@ -19,9 +19,9 @@ val GoldOnSecondaryLight = Color(0xFFFFFFFF)
 val GoldSecondaryContainerLight = Color(0xFFFFDF9E)
 val GoldOnSecondaryContainerLight = Color(0xFF2E1A00)
 
-val GoldSecondaryDark = Color(0xFFFFBA39)
-val GoldOnSecondaryDark = Color(0xFF4C2F00)
-val GoldSecondaryContainerDark = Color(0xFF6E4500)
+val GoldSecondaryDark = Color(0xFFFFC247)
+val GoldOnSecondaryDark = Color(0xFF472A00)
+val GoldSecondaryContainerDark = Color(0xFF593800)
 val GoldOnSecondaryContainerDark = Color(0xFFFFDF9E)
 
 // Tertiary Indigo / School Slate Palette (Academic focus)
@@ -32,28 +32,29 @@ val IndigoOnTertiaryContainerLight = Color(0xFF001C3B)
 
 val IndigoTertiaryDark = Color(0xFFA1C9FD)
 val IndigoOnTertiaryDark = Color(0xFF003061)
-val IndigoTertiaryContainerDark = Color(0xFF0A4476)
+val IndigoTertiaryContainerDark = Color(0xFF0E3B68)
 val IndigoOnTertiaryContainerDark = Color(0xFFD2E4FF)
 
-// Background & Surface
+// Light Mode Background & Surface
 val LightBackground = Color(0xFFF7FBF9)
 val LightSurface = Color(0xFFFFFFFF)
 val LightSurfaceVariant = Color(0xFFE4EDE9)
 val LightOnSurface = Color(0xFF161E1C)
 val LightOnSurfaceVariant = Color(0xFF404B47)
 
-val DarkBackground = Color(0xFF0E1614)
-val DarkSurface = Color(0xFF131D1B)
-val DarkSurfaceVariant = Color(0xFF21302C)
-val DarkOnSurface = Color(0xFFE0E9E6)
-val DarkOnSurfaceVariant = Color(0xFFBCC8C3)
+// True Black Mode (Siyah Mod) Background & Surface — Optimized for Vestel Venus V4 & Night Reading
+val DarkBackground = Color(0xFF000000)       // Tam Siyah Arka Plan
+val DarkSurface = Color(0xFF0C1210)          // Koyu Antrasit Kart Yüzeyi
+val DarkSurfaceVariant = Color(0xFF182420)   // Kenarlık ve İkincil Yüzey
+val DarkOnSurface = Color(0xFFECF4F1)        // Yüksek Kontrast Okunaklı Metin
+val DarkOnSurfaceVariant = Color(0xFFB0C2BC) // İkincil Metin
 
-// Category Accent Colors
-val ColorAyet = Color(0xFF0D7C66)
-val ColorHadis = Color(0xFF2E7D32)
-val ColorHikmet = Color(0xFFB45309)
+// Category Accent Colors (High contrast on both Light & Black Mode)
+val ColorAyet = Color(0xFF10B981)
+val ColorHadis = Color(0xFF34D399)
+val ColorHikmet = Color(0xFFF59E0B)
 
-val ColorOdevNormal = Color(0xFF2563EB)
-val ColorOdevPerformans = Color(0xFF7C3AED)
-val ColorOdevProje = Color(0xFFD97706)
-val ColorSinav = Color(0xFFDC2626)
+val ColorOdevNormal = Color(0xFF3B82F6)
+val ColorOdevPerformans = Color(0xFFA855F7)
+val ColorOdevProje = Color(0xFFF59E0B)
+val ColorSinav = Color(0xFFEF4444)

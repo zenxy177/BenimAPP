@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.app.TimePickerDialog
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -24,10 +25,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.local.entity.ScheduleLessonEntity
 import com.example.ui.MainViewModel
 import com.example.ui.components.EmptyStateCard
 import com.example.ui.theme.*
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,21 +38,19 @@ fun TimetableScreen(
     viewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
-    val allLessons by viewModel.allLessons.collectAsState()
-    val selectedDay by viewModel.selectedScheduleDay.collectAsState()
+    val selectedDay by viewModel.selectedScheduleDay.collectAsStateWithLifecycle()
+    val currentDayLessons by viewModel.selectedDayLessons.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val days = listOf(
-        Pair(1, "Pazartesi"),
-        Pair(2, "Salı"),
-        Pair(3, "Çarşamba"),
-        Pair(4, "Perşembe"),
-        Pair(5, "Cuma"),
-        Pair(6, "Cumartesi")
-    )
-
-    val currentDayLessons = remember(allLessons, selectedDay) {
-        allLessons.filter { it.dayOfWeek == selectedDay }.sortedBy { it.periodIndex }
+    val days = remember {
+        listOf(
+            Pair(1, "Pazartesi"),
+            Pair(2, "Salı"),
+            Pair(3, "Çarşamba"),
+            Pair(4, "Perşembe"),
+            Pair(5, "Cuma"),
+            Pair(6, "Cumartesi")
+        )
     }
 
     Scaffold(
@@ -59,9 +60,10 @@ fun TimetableScreen(
                 onClick = { showAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
+                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
                 modifier = Modifier
-                    .padding(bottom = 72.dp)
+                    .padding(bottom = 64.dp)
                     .testTag("timetable_add_fab")
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Ders Ekle")
@@ -73,17 +75,16 @@ fun TimetableScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Header
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 Text(
                     text = "Haftalık Okul Ders Programı",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontSize = 19.sp
                     ),
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -94,12 +95,11 @@ fun TimetableScreen(
                 )
             }
 
-            // Days horizontal selector bar
             LazyRow(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(days) { (dayNum, dayName) ->
+                items(days, key = { it.first }) { (dayNum, dayName) ->
                     val isSelected = selectedDay == dayNum
                     FilterChip(
                         selected = isSelected,
@@ -118,7 +118,6 @@ fun TimetableScreen(
                 }
             }
 
-            // Lessons List
             if (currentDayLessons.isEmpty()) {
                 val dayName = days.firstOrNull { it.first == selectedDay }?.second ?: "Seçili gün"
                 EmptyStateCard(
@@ -133,7 +132,7 @@ fun TimetableScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag("timetable_list"),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
                 ) {
                     items(currentDayLessons, key = { it.id }) { lesson ->
                         LessonScheduleCard(
@@ -143,7 +142,7 @@ fun TimetableScreen(
                         )
                     }
                     item {
-                        Spacer(modifier = Modifier.height(80.dp))
+                        Spacer(modifier = Modifier.height(76.dp))
                     }
                 }
             }
@@ -180,14 +179,15 @@ fun LessonScheduleCard(
         modifier = modifier
             .fillMaxWidth()
             .testTag("lesson_item_${lesson.id}"),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -195,34 +195,33 @@ fun LessonScheduleCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
-                // Period Badge
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(cardColor.copy(alpha = 0.15f)),
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(cardColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${lesson.periodIndex}.",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = cardColor
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
                         )
                         Text(
                             text = "Ders",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = cardColor
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            color = Color.White
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.width(14.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column {
                     Text(
                         text = lesson.lessonName,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     if (lesson.teacherOrRoom.isNotBlank()) {
@@ -239,7 +238,7 @@ fun LessonScheduleCard(
                                 imageVector = Icons.Default.AccessTime,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(13.dp)
+                                modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
@@ -256,7 +255,7 @@ fun LessonScheduleCard(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = "Dersi Kaldır",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -279,44 +278,48 @@ fun AddLessonDialog(
     var endTime by remember { mutableStateOf("09:10") }
     var selectedColorHex by remember { mutableStateOf("#0F5A4F") }
 
-    val daysList = listOf(
-        Pair(1, "Pzt"),
-        Pair(2, "Sal"),
-        Pair(3, "Çar"),
-        Pair(4, "Per"),
-        Pair(5, "Cum"),
-        Pair(6, "Cmt")
-    )
+    val daysList = remember {
+        listOf(
+            Pair(1, "Pzt"),
+            Pair(2, "Sal"),
+            Pair(3, "Çar"),
+            Pair(4, "Per"),
+            Pair(5, "Cum"),
+            Pair(6, "Cmt")
+        )
+    }
 
-    val colorOptions = listOf(
-        "#0F5A4F", // Emerald
-        "#2C568E", // Indigo
-        "#915D00", // Amber
-        "#7C3AED", // Violet
-        "#0284C7", // Cyan
-        "#16A34A", // Green
-        "#DC2626"  // Red
-    )
+    val colorOptions = remember {
+        listOf(
+            "#0F5A4F",
+            "#2C568E",
+            "#915D00",
+            "#7C3AED",
+            "#0284C7",
+            "#16A34A",
+            "#DC2626"
+        )
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.fillMaxWidth().padding(12.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.fillMaxWidth().padding(10.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(16.dp)
             ) {
                 Text(
                     text = "Ders Ekle",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Day selector
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -326,14 +329,13 @@ fun AddLessonDialog(
                             selected = day == dNum,
                             onClick = { day = dNum },
                             label = { Text(dLabel, fontSize = 11.sp) },
-                            modifier = Modifier.padding(horizontal = 2.dp)
+                            modifier = Modifier.padding(horizontal = 1.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Period selector
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -361,31 +363,30 @@ fun AddLessonDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Ders Adı (Örn: Matematik, Fizik)") },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth().testTag("lesson_input_name")
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 OutlinedTextField(
                     value = teacherOrRoom,
                     onValueChange = { teacherOrRoom = it },
                     label = { Text("Öğretmen / Derslik (Opsiyonel)") },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Start & End Time Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -396,11 +397,11 @@ fun AddLessonDialog(
                             val h = parts.getOrNull(0)?.toIntOrNull() ?: 8
                             val m = parts.getOrNull(1)?.toIntOrNull() ?: 30
                             TimePickerDialog(context, { _, hourOfDay, minute ->
-                                startTime = String.format("%02d:%02d", hourOfDay, minute)
+                                startTime = String.format(Locale.US, "%02d:%02d", hourOfDay, minute)
                             }, h, m, true).show()
                         },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Başlangıç: $startTime", fontSize = 12.sp)
                     }
@@ -411,19 +412,18 @@ fun AddLessonDialog(
                             val h = parts.getOrNull(0)?.toIntOrNull() ?: 9
                             val m = parts.getOrNull(1)?.toIntOrNull() ?: 10
                             TimePickerDialog(context, { _, hourOfDay, minute ->
-                                endTime = String.format("%02d:%02d", hourOfDay, minute)
+                                endTime = String.format(Locale.US, "%02d:%02d", hourOfDay, minute)
                             }, h, m, true).show()
                         },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Bitiş: $endTime", fontSize = 12.sp)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Color picker dots
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -431,10 +431,10 @@ fun AddLessonDialog(
                 ) {
                     Text("Renk:", style = MaterialTheme.typography.bodySmall)
                     colorOptions.forEach { hex ->
-                        val color = Color(android.graphics.Color.parseColor(hex))
+                        val color = remember(hex) { Color(android.graphics.Color.parseColor(hex)) }
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
+                                .size(26.dp)
                                 .clip(CircleShape)
                                 .background(color)
                                 .clickable { selectedColorHex = hex },
@@ -445,14 +445,14 @@ fun AddLessonDialog(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("İptal") }
@@ -464,7 +464,7 @@ fun AddLessonDialog(
                             }
                         },
                         enabled = name.isNotBlank(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.testTag("lesson_confirm_button")
                     ) {
                         Text("Kaydet")

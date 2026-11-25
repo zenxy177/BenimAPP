@@ -23,6 +23,12 @@ interface GoalDao {
     @Query("SELECT COUNT(*) FROM daily_goals WHERE dateString = :dateStr")
     suspend fun getGoalCountForDate(dateStr: String): Int
 
+    @Query("SELECT COUNT(*) FROM daily_goals")
+    suspend fun getTotalGoalCount(): Int
+
+    @Query("SELECT * FROM daily_goals ORDER BY id DESC")
+    suspend fun getAllGoalsList(): List<DailyGoalEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoal(goal: DailyGoalEntity): Long
 
@@ -37,4 +43,7 @@ interface GoalDao {
 
     @Query("DELETE FROM daily_goals WHERE id = :id")
     suspend fun deleteGoalById(id: Long)
+
+    @Query("DELETE FROM daily_goals WHERE title = :title")
+    suspend fun deleteGoalsByTitle(title: String)
 }

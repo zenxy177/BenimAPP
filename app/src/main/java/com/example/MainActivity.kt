@@ -12,14 +12,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -29,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.notification.NotificationHelper
 import com.example.ui.MainTab
 import com.example.ui.MainViewModel
@@ -44,13 +53,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Create notification channels
-        NotificationHelper.createNotificationChannels(this)
+        // Create notification channels (no-op on Android 7.0 API 24, creates channels on API 26+)
+        NotificationHelper.createNotificationChannels(applicationContext)
 
         handleNavigationIntent(intent)
 
         setContent {
-            MyApplicationTheme {
+            val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+            MyApplicationTheme(darkTheme = isDarkMode) {
                 MainAppScreen(
                     viewModel = viewModel,
                     modifier = Modifier.fillMaxSize()
@@ -78,10 +88,10 @@ fun MainAppScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val currentTab by viewModel.currentTab.collectAsState()
+    val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Request notification permission on Android 13+ (API 33+)
+    // Request notification permission only on Android 13+ (API 33+); on Android 7.0 it is granted at install time
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -115,11 +125,13 @@ fun MainAppScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
+            // Flat 0.dp tonalElevation to avoid GPU color blending & shadow passes on Mali-T720 MP2
             NavigationBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("bottom_nav_bar"),
-                tonalElevation = 8.dp
+                tonalElevation = 0.dp,
+                containerColor = MaterialTheme.colorScheme.surface
             ) {
                 NavigationBarItem(
                     selected = currentTab == MainTab.HOME,
@@ -128,7 +140,7 @@ fun MainAppScreen(
                         Icon(
                             imageVector = if (currentTab == MainTab.HOME) Icons.Filled.Home else Icons.Outlined.Home,
                             contentDescription = "Bugün",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     },
                     label = { Text("Bugün", fontSize = 11.sp, fontWeight = if (currentTab == MainTab.HOME) FontWeight.Bold else FontWeight.Normal) },
@@ -142,7 +154,7 @@ fun MainAppScreen(
                         Icon(
                             imageVector = if (currentTab == MainTab.QUOTES) Icons.Filled.AutoStories else Icons.Outlined.AutoStories,
                             contentDescription = "Hikmetler",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     },
                     label = { Text("Hikmetler", fontSize = 11.sp, fontWeight = if (currentTab == MainTab.QUOTES) FontWeight.Bold else FontWeight.Normal) },
@@ -154,9 +166,9 @@ fun MainAppScreen(
                     onClick = { viewModel.selectTab(MainTab.SCHOOL) },
                     icon = {
                         Icon(
-                            imageVector = if (currentTab == MainTab.SCHOOL) Icons.Filled.Assignment else Icons.Outlined.Assignment,
+                            imageVector = if (currentTab == MainTab.SCHOOL) Icons.AutoMirrored.Filled.Assignment else Icons.AutoMirrored.Outlined.Assignment,
                             contentDescription = "Okul & Ödev",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     },
                     label = { Text("Ödev & Sınav", fontSize = 11.sp, fontWeight = if (currentTab == MainTab.SCHOOL) FontWeight.Bold else FontWeight.Normal) },
@@ -170,10 +182,10 @@ fun MainAppScreen(
                         Icon(
                             imageVector = if (currentTab == MainTab.TIMETABLE) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
                             contentDescription = "Ders Programı",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     },
-                    label = { Text("Ders Programı", fontSize = 11.sp, fontWeight = if (currentTab == MainTab.TIMETABLE) FontWeight.Bold else FontWeight.Normal) },
+                    label = { Text("Program", fontSize = 11.sp, fontWeight = if (currentTab == MainTab.TIMETABLE) FontWeight.Bold else FontWeight.Normal) },
                     modifier = Modifier.testTag("nav_item_timetable")
                 )
 
@@ -183,24 +195,23 @@ fun MainAppScreen(
                     icon = {
                         Icon(
                             imageVector = if (currentTab == MainTab.GOALS) Icons.Filled.TaskAlt else Icons.Outlined.TaskAlt,
-                            contentDescription = "Hedefler",
-                            modifier = Modifier.size(24.dp)
+                            contentDescription = "Görevler & Hedefler",
+                            modifier = Modifier.size(22.dp)
                         )
                     },
-                    label = { Text("Hedeflerim", fontSize = 11.sp, fontWeight = if (currentTab == MainTab.GOALS) FontWeight.Bold else FontWeight.Normal) },
+                    label = { Text("Görevler", fontSize = 11.sp, fontWeight = if (currentTab == MainTab.GOALS) FontWeight.Bold else FontWeight.Normal) },
                     modifier = Modifier.testTag("nav_item_goals")
                 )
             }
         }
     ) { innerPadding ->
-        Crossfade(
-            targetState = currentTab,
-            label = "tab_crossfade",
+        // Direct instant state switching without Crossfade alpha-blending to guarantee 60 FPS on Mali-T720 MP2
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-        ) { tab ->
-            when (tab) {
+        ) {
+            when (currentTab) {
                 MainTab.HOME -> HomeScreen(
                     viewModel = viewModel,
                     onNavigateTab = { targetTab -> viewModel.selectTab(targetTab) }

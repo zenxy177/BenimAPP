@@ -308,4 +308,129 @@ object InitialData {
             )
         )
     }
+
+    val initialDhikrs = listOf(
+        DhikrEntity(
+            title = "Sübhanallah",
+            arabicOrMeaning = "Allah her türlü eksiklikten münezzehtir.",
+            currentCount = 0,
+            targetCount = 33,
+            totalLifetimeCount = 33
+        ),
+        DhikrEntity(
+            title = "Elhamdülillah",
+            arabicOrMeaning = "Hamd ve şükür yalnızca Allah'a mahsustur.",
+            currentCount = 0,
+            targetCount = 33,
+            totalLifetimeCount = 33
+        ),
+        DhikrEntity(
+            title = "Allahu Ekber",
+            arabicOrMeaning = "Allah en büyüktür, kudreti her şeyin üstündedir.",
+            currentCount = 0,
+            targetCount = 33,
+            totalLifetimeCount = 33
+        ),
+        DhikrEntity(
+            title = "Salavat-ı Şerife",
+            arabicOrMeaning = "Allahümme salli alâ seyyidinâ Muhammedin ve alâ âli seyyidinâ Muhammed.",
+            currentCount = 0,
+            targetCount = 100,
+            totalLifetimeCount = 0
+        ),
+        DhikrEntity(
+            title = "Estağfirullah el-Azîm",
+            arabicOrMeaning = "Yüce Allah'tan bağışlanma dilerim.",
+            currentCount = 0,
+            targetCount = 100,
+            totalLifetimeCount = 0
+        )
+    )
+
+    val initialStudyNotes = listOf(
+        StudyNoteEntity(
+            courseName = "Matematik",
+            title = "Trigonometrik Özdeşlikler",
+            content = "sin²(x) + cos²(x) = 1\ntan(x) = sin(x) / cos(x)\nsin(2x) = 2·sin(x)·cos(x)"
+        ),
+        StudyNoteEntity(
+            courseName = "Fizik",
+            title = "Newton'un Hareket Yasaları",
+            content = "1. Eylemsizlik Yasası (F_net = 0 ise sabit hız)\n2. Temel Yasa: F_net = m · a\n3. Etki - Tepki Yasası"
+        ),
+        StudyNoteEntity(
+            courseName = "Edebiyat",
+            title = "Servet-i Fünun Dönemi Temsilcileri",
+            content = "Şiir: Tevfik Fikret, Cenap Şahabettin\nRoman: Halit Ziya Uşaklıgil (Mai ve Siyah, Aşk-ı Memnu), Mehmet Rauf (Eylül)"
+        ),
+        StudyNoteEntity(
+            courseName = "Tarih",
+            title = "İstanbul'un Fethi (29 Mayıs 1453)",
+            content = "Fatih Sultan Mehmet tarafından gerçekleştirildi. Orta Çağ kapanıp Yeni Çağ başladı."
+        )
+    )
+
+    fun getSampleTasks(): List<TaskEntity> {
+        val now = System.currentTimeMillis()
+        val oneHour = 3600L * 1000L
+        val oneDay = 24L * oneHour
+        return listOf(
+            TaskEntity(
+                title = "Matematik Konu Tekrarı ve Soru Çözümü",
+                description = "Trigonometri ve Türev konularından eksik kalan kısımları tamamla.",
+                category = TaskCategory.OKUL,
+                priority = Priority.YUKSEK,
+                dueDateMillis = now + 4 * oneHour,
+                hasReminder = true,
+                recurrence = TaskRecurrence.DAILY,
+                subtasksRaw = TaskEntity.encodeSubtasks(
+                    listOf(
+                        SubtaskItem("Ders notlarını 15 dk gözden geçir", true),
+                        SubtaskItem("Temel kavramlardan 20 soru çöz", false),
+                        SubtaskItem("Yapamadığın soruların çözümlerini incele", false)
+                    )
+                ),
+                tags = "Matematik, Sınav Hazırlık",
+                focusedMinutes = 25,
+                isCompleted = false
+            ),
+            TaskEntity(
+                title = "Sabah / Akşam Tefekkür ve Meal Okuması",
+                description = "Günün yoğunluğu içinde kalbi dinlendirmek ve ilmi artırmak için düzenli okuma.",
+                category = TaskCategory.MANEVIYAT,
+                priority = Priority.ORTA,
+                dueDateMillis = now + 6 * oneHour,
+                hasReminder = false,
+                recurrence = TaskRecurrence.DAILY,
+                subtasksRaw = TaskEntity.encodeSubtasks(
+                    listOf(
+                        SubtaskItem("Günün ayet ve hadisini oku", true),
+                        SubtaskItem("5 sayfa Kuran-ı Kerim meali oku", false)
+                    )
+                ),
+                tags = "Huzur, Tefekkür",
+                focusedMinutes = 15,
+                isCompleted = false
+            ),
+            TaskEntity(
+                title = "Haftalık Çalışma Masası ve Plan Düzeni",
+                description = "Gelecek haftanın ders ve sınav hedeflerini gözden geçir.",
+                category = TaskCategory.KISISEL,
+                priority = Priority.DUSUK,
+                dueDateMillis = now + 2 * oneDay,
+                hasReminder = false,
+                recurrence = TaskRecurrence.WEEKLY,
+                subtasksRaw = TaskEntity.encodeSubtasks(
+                    listOf(
+                        SubtaskItem("Masadaki kitap ve notları düzenle", false),
+                        SubtaskItem("Haftalık öncelikli 3 hedefi belirle", false)
+                    )
+                ),
+                tags = "Düzen, Planlama",
+                focusedMinutes = 0,
+                isCompleted = false
+            )
+        )
+    }
 }
+

@@ -25,6 +25,14 @@ class BootReceiver : BroadcastReceiver() {
                     reminders.filter { it.triggerTimeMillis > now }.forEach { rem ->
                         NotificationHelper.scheduleExactReminder(context, rem.id, rem.triggerTimeMillis)
                     }
+
+                    val activeTasks = db.taskDao().getActiveReminderTasks()
+                    activeTasks.forEach { task ->
+                        val due = task.dueDateMillis
+                        if (due != null && due > now) {
+                            NotificationHelper.scheduleTaskReminder(context, task.id, due)
+                        }
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {

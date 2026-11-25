@@ -5,15 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.local.dao.*
 import com.example.data.local.entity.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Database(
     entities = [
@@ -22,9 +17,13 @@ import java.util.Locale
         DailyGoalEntity::class,
         QuoteEntity::class,
         ScheduleLessonEntity::class,
-        ReminderEntity::class
+        ReminderEntity::class,
+        DhikrEntity::class,
+        StudyNoteEntity::class,
+        StudySessionEntity::class,
+        TaskEntity::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -36,11 +35,44 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun quoteDao(): QuoteDao
     abstract fun scheduleDao(): ScheduleDao
     abstract fun reminderDao(): ReminderDao
+    abstract fun dhikrDao(): DhikrDao
+    abstract fun studyNoteDao(): StudyNoteDao
+    abstract fun studySessionDao(): StudySessionDao
+    abstract fun taskDao(): TaskDao
     abstract fun appDao(): AppDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `tasks` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `description` TEXT NOT NULL,
+                        `category` TEXT NOT NULL,
+                        `priority` TEXT NOT NULL,
+                        `dueDateMillis` INTEGER,
+                        `hasReminder` INTEGER NOT NULL,
+                        `recurrence` TEXT NOT NULL,
+                        `subtasksRaw` TEXT NOT NULL,
+                        `tags` TEXT NOT NULL,
+                        `focusedMinutes` INTEGER NOT NULL,
+                        `isCompleted` INTEGER NOT NULL,
+                        `completedAt` INTEGER,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_isCompleted` ON `tasks` (`isCompleted`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_category` ON `tasks` (`category`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_priority` ON `tasks` (`priority`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_tasks_dueDateMillis` ON `tasks` (`dueDateMillis`)")
+            }
+        }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -49,47 +81,11 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "rehberim_database"
                 )
-                    .fallbackToDestructiveMigration(dropAllTables = true)
-                    .addCallback(DatabaseCallback())
+                    .addMigrations(MIGRATION_3_4)
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance
-            }
-        }
-
-        private class DatabaseCallback : RoomDatabase.Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                super.onCreate(db)
-                INSTANCE?.let { database ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        populateInitialData(database)
-                    }
-                }
-            }
-
-            suspend fun populateInitialData(database: AppDatabase) {
-                val quoteDao = database.quoteDao()
-                val homeworkDao = database.homeworkDao()
-                val examDao = database.examDao()
-                val goalDao = database.goalDao()
-                val scheduleDao = database.scheduleDao()
-
-                if (quoteDao.getQuoteCount() == 0) {
-                    quoteDao.insertQuotes(InitialData.initialQuotes)
-                }
-                if (scheduleDao.getScheduleCount() == 0) {
-                    scheduleDao.insertLessons(InitialData.getSampleSchedule())
-                }
-                val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                if (goalDao.getGoalCountForDate(todayStr) == 0) {
-                    goalDao.insertGoals(InitialData.getSampleGoals(todayStr))
-                }
-                if (homeworkDao.getHomeworkCount() == 0) {
-                    homeworkDao.insertHomeworks(InitialData.getSampleHomeworks())
-                }
-                if (examDao.getExamCount() == 0) {
-                    examDao.insertExams(InitialData.getSampleExams())
-                }
             }
         }
     }

@@ -21,29 +21,98 @@ class AppRepository(private val context: Context) {
     private val quoteDao = db.quoteDao()
     private val scheduleDao = db.scheduleDao()
     private val reminderDao = db.reminderDao()
+    private val dhikrDao = db.dhikrDao()
+    private val studyNoteDao = db.studyNoteDao()
+    private val studySessionDao = db.studySessionDao()
+    private val taskDao = db.taskDao()
 
     fun getTodayDateString(): String {
         return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     }
 
-    // Initialize database data if empty
     suspend fun checkAndSeedInitialData() = withContext(Dispatchers.IO) {
-        if (quoteDao.getQuoteCount() == 0) {
-            quoteDao.insertQuotes(InitialData.initialQuotes)
-        }
-        if (scheduleDao.getScheduleCount() == 0) {
-            scheduleDao.insertLessons(InitialData.getSampleSchedule())
-        }
+        val prefs = context.getSharedPreferences("rehberim_prefs", Context.MODE_PRIVATE)
         val todayStr = getTodayDateString()
-        if (goalDao.getGoalCountForDate(todayStr) == 0) {
-            goalDao.insertGoals(InitialData.getSampleGoals(todayStr))
+        val alreadySeeded = prefs.getBoolean("is_database_seeded", false)
+        val tasksSeeded = prefs.getBoolean("is_tasks_seeded", false)
+
+        if (!tasksSeeded) {
+            if (taskDao.getTaskCount() == 0) {
+                val sampleTasks = InitialData.getSampleTasks()
+                taskDao.insertTasks(sampleTasks)
+            }
+            prefs.edit().putBoolean("is_tasks_seeded", true).apply()
         }
-        if (homeworkDao.getHomeworkCount() == 0) {
-            homeworkDao.insertHomeworks(InitialData.getSampleHomeworks())
+
+        if (alreadySeeded) {
+            handleDailyGoalRollover(todayStr, prefs)
+            return@withContext
         }
-        if (examDao.getExamCount() == 0) {
-            examDao.insertExams(InitialData.getSampleExams())
+
+        // Check if database already has user or seeded records from earlier executions
+        val hasExistingData = quoteDao.getQuoteCount() > 0 ||
+            homeworkDao.getHomeworkCount() > 0 ||
+            scheduleDao.getScheduleCount() > 0 ||
+            dhikrDao.getDhikrCount() > 0 ||
+            studyNoteDao.getStudyNoteCount() > 0
+
+        if (hasExistingData) {
+            prefs.edit()
+                .putBoolean("is_database_seeded", true)
+                .putBoolean("is_tasks_seeded", true)
+                .putString("last_goal_rollover_date", todayStr)
+                .apply()
+            handleDailyGoalRollover(todayStr, prefs)
+            return@withContext
         }
+
+        // First clean app install: seed initial data once
+        quoteDao.insertQuotes(InitialData.initialQuotes)
+        scheduleDao.insertLessons(InitialData.getSampleSchedule())
+        goalDao.insertGoals(InitialData.getSampleGoals(todayStr))
+        homeworkDao.insertHomeworks(InitialData.getSampleHomeworks())
+        examDao.insertExams(InitialData.getSampleExams())
+        dhikrDao.insertDhikrs(InitialData.initialDhikrs)
+        studyNoteDao.insertStudyNotes(InitialData.initialStudyNotes)
+        if (taskDao.getTaskCount() == 0) {
+            taskDao.insertTasks(InitialData.getSampleTasks())
+        }
+
+        prefs.edit()
+            .putBoolean("is_database_seeded", true)
+            .putBoolean("is_tasks_seeded", true)
+            .putString("last_goal_rollover_date", todayStr)
+            .apply()
+    }
+
+    private suspend fun handleDailyGoalRollover(todayStr: String, prefs: android.content.SharedPreferences) {
+        val lastRollover = prefs.getString("last_goal_rollover_date", "")
+        if (lastRollover == todayStr) {
+            // Already initialized for today. Any items added, modified, or deleted today stay as is.
+            return
+        }
+
+        val todayCount = goalDao.getGoalCountForDate(todayStr)
+        if (todayCount == 0) {
+            val allPastGoals = goalDao.getAllGoalsList()
+            if (allPastGoals.isNotEmpty()) {
+                val distinctGoals = allPastGoals.distinctBy { it.title.trim().lowercase(Locale.ROOT) }
+                val newGoalsForToday = distinctGoals.map { goal ->
+                    DailyGoalEntity(
+                        title = goal.title,
+                        category = goal.category,
+                        targetCount = goal.targetCount,
+                        currentCount = 0,
+                        unit = goal.unit,
+                        isCompleted = false,
+                        dateString = todayStr
+                    )
+                }
+                goalDao.insertGoals(newGoalsForToday)
+            }
+        }
+
+        prefs.edit().putString("last_goal_rollover_date", todayStr).apply()
     }
 
     // --- QUOTES (QuoteDao) ---
@@ -69,6 +138,75 @@ class AppRepository(private val context: Context) {
 
     suspend fun getRandomQuote(): QuoteEntity? = withContext(Dispatchers.IO) {
         quoteDao.getRandomQuote()
+    }
+
+    // --- DHIKR / ZİKİRMATİK (DhikrDao) ---
+    val allDhikrs: Flow<List<DhikrEntity>> = dhikrDao.getAllDhikrs()
+
+    suspend fun incrementDhikr(dhikr: DhikrEntity) = withContext(Dispatchers.IO) {
+        val nextCount = dhikr.currentCount + 1
+        dhikrDao.updateDhikr(
+            dhikr.copy(
+                currentCount = nextCount,
+                totalLifetimeCount = dhikr.totalLifetimeCount + 1
+            )
+        )
+    }
+
+    suspend fun resetDhikrRound(dhikr: DhikrEntity) = withContext(Dispatchers.IO) {
+        dhikrDao.updateDhikr(dhikr.copy(currentCount = 0))
+    }
+
+    suspend fun addDhikr(title: String, meaning: String, targetCount: Int) = withContext(Dispatchers.IO) {
+        dhikrDao.insertDhikr(
+            DhikrEntity(
+                title = title.trim(),
+                arabicOrMeaning = meaning.trim(),
+                currentCount = 0,
+                targetCount = targetCount.coerceAtLeast(1),
+                totalLifetimeCount = 0
+            )
+        )
+    }
+
+    suspend fun deleteDhikr(dhikr: DhikrEntity) = withContext(Dispatchers.IO) {
+        dhikrDao.deleteDhikr(dhikr)
+    }
+
+    // --- STUDY NOTES / EZBER KARTLARI (StudyNoteDao) ---
+    val allStudyNotes: Flow<List<StudyNoteEntity>> = studyNoteDao.getAllStudyNotes()
+
+    suspend fun addStudyNote(courseName: String, title: String, content: String) = withContext(Dispatchers.IO) {
+        studyNoteDao.insertStudyNote(
+            StudyNoteEntity(
+                courseName = courseName.trim(),
+                title = title.trim(),
+                content = content.trim()
+            )
+        )
+    }
+
+    suspend fun deleteStudyNote(note: StudyNoteEntity) = withContext(Dispatchers.IO) {
+        studyNoteDao.deleteStudyNote(note)
+    }
+
+    // --- STUDY SESSIONS / POMODORO (StudySessionDao) ---
+    val allStudySessions: Flow<List<StudySessionEntity>> = studySessionDao.getAllStudySessions()
+
+    fun getTodayStudyMinutes(): Flow<Int> =
+        studySessionDao.getTotalMinutesForDate(getTodayDateString())
+
+    val totalLifetimeStudyMinutes: Flow<Int> =
+        studySessionDao.getTotalLifetimeMinutes()
+
+    suspend fun recordStudySession(courseOrTopic: String, durationMinutes: Int) = withContext(Dispatchers.IO) {
+        studySessionDao.insertStudySession(
+            StudySessionEntity(
+                courseOrTopic = courseOrTopic.trim().ifBlank { "Genel Ders Çalışma" },
+                durationMinutes = durationMinutes.coerceAtLeast(1),
+                dateString = getTodayDateString()
+            )
+        )
     }
 
     // --- HOMEWORKS (HomeworkDao) ---
@@ -207,6 +345,7 @@ class AppRepository(private val context: Context) {
     }
 
     suspend fun deleteGoal(goal: DailyGoalEntity) = withContext(Dispatchers.IO) {
+        goalDao.deleteGoalsByTitle(goal.title)
         goalDao.deleteGoal(goal)
     }
 
@@ -237,6 +376,132 @@ class AppRepository(private val context: Context) {
     suspend fun deleteReminder(reminder: ReminderEntity) = withContext(Dispatchers.IO) {
         NotificationHelper.cancelReminder(context, reminder.id)
         reminderDao.deleteReminder(reminder)
+    }
+
+    // --- TASKS & MOTIVATION (TaskDao) ---
+    val allTasks: Flow<List<TaskEntity>> = taskDao.getAllTasks()
+
+    val pendingTasks: Flow<List<TaskEntity>> = taskDao.getPendingTasks()
+
+    suspend fun addTask(
+        title: String,
+        description: String,
+        category: TaskCategory,
+        priority: Priority,
+        dueDateMillis: Long?,
+        hasReminder: Boolean,
+        recurrence: TaskRecurrence,
+        subtasks: List<SubtaskItem>,
+        tags: String
+    ): Long = withContext(Dispatchers.IO) {
+        val cleanTitle = title.trim()
+        val encodedSubtasks = TaskEntity.encodeSubtasks(subtasks)
+        val task = TaskEntity(
+            title = cleanTitle,
+            description = description.trim(),
+            category = category,
+            priority = priority,
+            dueDateMillis = dueDateMillis,
+            hasReminder = hasReminder && dueDateMillis != null,
+            recurrence = recurrence,
+            subtasksRaw = encodedSubtasks,
+            tags = tags.trim(),
+            focusedMinutes = 0,
+            isCompleted = false
+        )
+        val id = taskDao.insertTask(task)
+        if (hasReminder && dueDateMillis != null && dueDateMillis > System.currentTimeMillis()) {
+            NotificationHelper.scheduleTaskReminder(context, id, dueDateMillis)
+        }
+        id
+    }
+
+    suspend fun toggleTaskCompleted(task: TaskEntity): Boolean = withContext(Dispatchers.IO) {
+        val nowCompleted = !task.isCompleted
+        val now = System.currentTimeMillis()
+
+        val currentSubtasks = task.parseSubtasks()
+        val updatedSubtasksRaw = if (nowCompleted && currentSubtasks.isNotEmpty()) {
+            TaskEntity.encodeSubtasks(currentSubtasks.map { it.copy(isDone = true) })
+        } else {
+            task.subtasksRaw
+        }
+
+        val updatedTask = task.copy(
+            isCompleted = nowCompleted,
+            completedAt = if (nowCompleted) now else null,
+            subtasksRaw = updatedSubtasksRaw
+        )
+        taskDao.updateTask(updatedTask)
+
+        if (nowCompleted) {
+            NotificationHelper.cancelTaskReminder(context, task.id)
+            if (task.recurrence != TaskRecurrence.NONE) {
+                val baseTime = task.dueDateMillis ?: now
+                val nextDueMillis = when (task.recurrence) {
+                    TaskRecurrence.DAILY -> baseTime + 24L * 3600L * 1000L
+                    TaskRecurrence.WEEKLY -> baseTime + 7L * 24L * 3600L * 1000L
+                    TaskRecurrence.NONE -> null
+                }
+                val resetSubtasks = TaskEntity.encodeSubtasks(currentSubtasks.map { it.copy(isDone = false) })
+                val nextTask = TaskEntity(
+                    title = task.title,
+                    description = task.description,
+                    category = task.category,
+                    priority = task.priority,
+                    dueDateMillis = nextDueMillis,
+                    hasReminder = task.hasReminder && nextDueMillis != null,
+                    recurrence = task.recurrence,
+                    subtasksRaw = resetSubtasks,
+                    tags = task.tags,
+                    focusedMinutes = 0,
+                    isCompleted = false
+                )
+                val nextId = taskDao.insertTask(nextTask)
+                if (nextTask.hasReminder && nextDueMillis != null && nextDueMillis > now) {
+                    NotificationHelper.scheduleTaskReminder(context, nextId, nextDueMillis)
+                }
+            }
+        } else {
+            val due = task.dueDateMillis
+            if (task.hasReminder && due != null && due > now) {
+                NotificationHelper.scheduleTaskReminder(context, task.id, due)
+            }
+        }
+        nowCompleted
+    }
+
+    suspend fun toggleSubtask(task: TaskEntity, subtaskIndex: Int): Boolean = withContext(Dispatchers.IO) {
+        val list = task.parseSubtasks().toMutableList()
+        if (subtaskIndex !in list.indices) return@withContext false
+
+        val item = list[subtaskIndex]
+        list[subtaskIndex] = item.copy(isDone = !item.isDone)
+        val allDone = list.isNotEmpty() && list.all { it.isDone }
+        val encoded = TaskEntity.encodeSubtasks(list)
+
+        if (allDone && !task.isCompleted) {
+            toggleTaskCompleted(task.copy(subtasksRaw = encoded))
+            return@withContext true
+        } else {
+            val updated = task.copy(
+                subtasksRaw = encoded,
+                isCompleted = if (!allDone && task.isCompleted) false else task.isCompleted,
+                completedAt = if (!allDone && task.isCompleted) null else task.completedAt
+            )
+            taskDao.updateTask(updated)
+            return@withContext false
+        }
+    }
+
+    suspend fun addFocusMinutesToTask(taskId: Long, minutes: Int) = withContext(Dispatchers.IO) {
+        val task = taskDao.getTaskById(taskId) ?: return@withContext
+        taskDao.updateTask(task.copy(focusedMinutes = task.focusedMinutes + minutes.coerceAtLeast(1)))
+    }
+
+    suspend fun deleteTask(task: TaskEntity) = withContext(Dispatchers.IO) {
+        NotificationHelper.cancelTaskReminder(context, task.id)
+        taskDao.deleteTask(task)
     }
 
     // --- NOTIFICATION UTILITIES ---

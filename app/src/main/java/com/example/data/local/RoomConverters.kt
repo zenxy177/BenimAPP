@@ -5,6 +5,8 @@ import com.example.data.local.entity.GoalCategory
 import com.example.data.local.entity.HomeworkType
 import com.example.data.local.entity.Priority
 import com.example.data.local.entity.QuoteCategory
+import com.example.data.local.entity.TaskCategory
+import com.example.data.local.entity.TaskRecurrence
 
 class RoomConverters {
 
@@ -35,4 +37,18 @@ class RoomConverters {
     @TypeConverter
     fun toQuoteCategory(value: String): QuoteCategory =
         runCatching { QuoteCategory.valueOf(value) }.getOrDefault(QuoteCategory.HIKMET)
+
+    @TypeConverter
+    fun fromTaskCategory(value: TaskCategory): String = value.name
+
+    @TypeConverter
+    fun toTaskCategory(value: String): TaskCategory =
+        runCatching { TaskCategory.valueOf(value) }.getOrDefault(TaskCategory.OKUL)
+
+    @TypeConverter
+    fun fromTaskRecurrence(value: TaskRecurrence): String = value.name
+
+    @TypeConverter
+    fun toTaskRecurrence(value: String): TaskRecurrence =
+        runCatching { TaskRecurrence.valueOf(value) }.getOrDefault(TaskRecurrence.NONE)
 }
